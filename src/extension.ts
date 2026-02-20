@@ -11,17 +11,14 @@ import { registerGroupCommands } from './commands/groupCommands';
 import { SidebarViewProvider } from './ui/sidebarView';
 import { ContractGroupService } from './services/contractGroupService';
 import { ContractVersionTracker } from './services/contractVersionTracker';
-
-let sidebarProvider: SidebarViewProvider | undefined;
-let groupService: ContractGroupService | undefined;
-let versionTracker: ContractVersionTracker | undefined;
 import { manageCliConfiguration } from './commands/manageCliConfiguration';
 import { registerSyncCommands } from './commands/syncCommands';
-import { SidebarViewProvider } from './ui/sidebarView';
 import { WorkspaceStateSyncService } from './services/workspaceStateSyncService';
 import { SyncStatusProvider } from './ui/syncStatusProvider';
 
 let sidebarProvider: SidebarViewProvider | undefined;
+let groupService: ContractGroupService | undefined;
+let versionTracker: ContractVersionTracker | undefined;
 let syncService: WorkspaceStateSyncService | undefined;
 let syncStatusProvider: SyncStatusProvider | undefined;
 
@@ -158,7 +155,6 @@ export function activate(context: vscode.ExtensionContext) {
             simulateFromSidebarCommand,
             copyContractIdCommand,
             showVersionMismatchesCommand,
-            watcher
             watcher,
             syncStatusProvider || { dispose: () => {} }
         );

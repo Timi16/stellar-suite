@@ -194,7 +194,8 @@ export class SimulationPanel {
           includeSnapshots: true,
         },
       );
-      await vscode.workspace.fs.writeFile(uri, Buffer.from(payload, "utf-8"));
+      const encoder = new TextEncoder();
+      await vscode.workspace.fs.writeFile(uri, encoder.encode(payload));
       vscode.window.showInformationMessage(
         "Stellar Suite: State diff exported successfully.",
       );

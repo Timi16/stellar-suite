@@ -147,26 +147,28 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Listen for configuration changes
     context.subscriptions.push(
-      vscode.workspace.onDidChangeConfiguration((e) => {
-        if (e.affectsConfiguration("stellarSuite")) {
-          configService.getResolvedConfiguration().then((resolved) => {
-            if (fallbackService) {
-              fallbackService.updateEndpoints(
-                resolved.configuration.rpcEndpoints || [],
-              );
-            }
-            if (healthMonitor) {
-              healthMonitor.setEndpoints(
-                (resolved.configuration.rpcEndpoints || []).map((ep) => ({
-                  url: ep.url,
-                  priority: ep.priority,
-                  fallback: false,
-                })),
-              );
-            }
-          });
-        }
-      }),
+      vscode.workspace.onDidChangeConfiguration(
+        (e: vscode.ConfigurationChangeEvent) => {
+          if (e.affectsConfiguration("stellarSuite")) {
+            configService.getResolvedConfiguration().then((resolved) => {
+              if (fallbackService) {
+                fallbackService.updateEndpoints(
+                  resolved.configuration.rpcEndpoints || [],
+                );
+              }
+              if (healthMonitor) {
+                healthMonitor.setEndpoints(
+                  (resolved.configuration.rpcEndpoints || []).map((ep) => ({
+                    url: ep.url,
+                    priority: ep.priority,
+                    fallback: false,
+                  })),
+                );
+              }
+            });
+          }
+        },
+      ),
     );
     outputChannel.appendLine(
       "[Extension] RPC health, retry and fallback services initialized",

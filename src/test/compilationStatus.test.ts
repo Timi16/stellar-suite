@@ -87,6 +87,8 @@ class MockExtensionContext {
     subscriptions: any[] = [];
 }
 
+type CSMType = CompilationStatusMonitor;
+
 const _tests: Array<{ name: string; fn: (done?: any) => void | Promise<void> }> = [];
 let _setup: (() => void) | undefined;
 let _teardown: (() => void) | undefined;
@@ -113,55 +115,40 @@ suite('CompilationStatusMonitor', () => {
     teardown(() => {
         monitor.dispose();
     });
-    
 
-    const tests = [
-        async function testStartCompilation() {
-            setup();
-            const event = monitor.startCompilation(testContractPath);
-            assert.strictEqual(event.contractPath, testContractPath);
-            assert.strictEqual(event.status, CompilationStatus.IN_PROGRESS);
-            teardown();
-        },
-        async function testUpdateProgress() {
-            setup();
-            monitor.startCompilation(testContractPath);
-            monitor.updateProgress(testContractPath, 50, 'Halfway done');
-            const status = monitor.getCurrentStatus(testContractPath);
-            assert.strictEqual(status?.progress, 50);
-            teardown();
-        },
-        async function testReportSuccess() {
-            setup();
-            monitor.startCompilation(testContractPath);
-            const record = monitor.reportSuccess(testContractPath, '/test/output.wasm');
-            assert.strictEqual(record.status, CompilationStatus.SUCCESS);
-            teardown();
-        },
-        async function testReportFailure() {
-            setup();
-            monitor.startCompilation(testContractPath);
-            const record = monitor.reportFailure(testContractPath, 'Build failed', []);
-            assert.strictEqual(record.status, CompilationStatus.FAILED);
-            teardown();
+    test('should start compilation', () => {
+        const event = monitor.startCompilation(testContractPath);
+        assert.strictEqual(event.contractPath, testContractPath);
+        assert.strictEqual(event.status, CompilationStatus.IN_PROGRESS);
+    });
+
+    test('should update progress', () => {
+        monitor.startCompilation(testContractPath);
+        monitor.updateProgress(testContractPath, 50, 'Halfway done');
+        const status = monitor.getCurrentStatus(testContractPath);
+        assert.strictEqual(status?.progress, 50);
+    });
+
+    test('should report success', () => {
+        monitor.startCompilation(testContractPath);
+        const record = monitor.reportSuccess(testContractPath, '/test/output.wasm');
+        assert.strictEqual(record.status, CompilationStatus.SUCCESS);
+    });
+
+    test('should report failure', () => {
+        monitor.startCompilation(testContractPath);
+        const record = monitor.reportFailure(testContractPath, 'Build failed', []);
+        assert.strictEqual(record.status, CompilationStatus.FAILED);
+    });
+
+    test('should enforce max history per contract', () => {
+        const mockCtx = new MockExtensionContext();
+        const limitedMonitor = new CompilationStatusMonitor(mockCtx as any, { maxHistoryPerContract: 3 });
+
+        for (let i = 0; i < 5; i++) {
+            limitedMonitor.startCompilation(testContractPath);
+            limitedMonitor.reportSuccess(testContractPath, '/test/output.wasm');
         }
-    ];
-
-    console.log('\ncompilationStatus unit tests');
-    let passed = 0;
-    let failed = 0;
-
-    for (const test of tests) {
-        try {
-            await test();
-            passed++;
-            console.log(`  [ok] ${test.name}`);
-        } catch (err) {
-            failed++;
-            console.error(`  [fail] ${test.name}`);
-            console.error(`         ${err instanceof Error ? err.message : String(err)}`);
-        }
-    }
 
         const history = limitedMonitor.getContractHistory(testContractPath);
         assert.strictEqual(history?.records.length, 3);
@@ -364,9 +351,11 @@ warning: unused variable
         const event1 = monitor.startCompilation(testContractPath);
         const event2 = monitor.startCompilation(testContractPath);
 
-run().catch(err => {
-    console.error('Test runner error:', err);
-    process.exitCode = 1;
+        assert.strictEqual(event1.contractPath, testContractPath);
+        assert.strictEqual(event2.contractPath, testContractPath);
+        assert.strictEqual(event2.status, CompilationStatus.IN_PROGRESS);
+    });
+
 });
 
 // Run tests

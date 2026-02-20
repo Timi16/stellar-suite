@@ -326,6 +326,42 @@
           "type": "boolean",
           "default": true,
           "description": "Allow storing deployment keypairs in VS Code SecretStorage."
+        },
+        "stellarSuite.deployment.retry.maxAttempts": {
+          "type": "number",
+          "default": 3,
+          "minimum": 1,
+          "maximum": 10,
+          "description": "Maximum number of deployment attempts (initial attempt + retries)."
+        },
+        "stellarSuite.deployment.retry.initialDelayMs": {
+          "type": "number",
+          "default": 1000,
+          "minimum": 100,
+          "description": "Initial backoff delay in milliseconds before the first retry."
+        },
+        "stellarSuite.deployment.retry.maxDelayMs": {
+          "type": "number",
+          "default": 30000,
+          "minimum": 1000,
+          "description": "Maximum backoff delay in milliseconds between retry attempts."
+        },
+        "stellarSuite.deployment.retry.backoffMultiplier": {
+          "type": "number",
+          "default": 2,
+          "minimum": 1,
+          "description": "Exponential backoff multiplier applied after each failed attempt."
+        },
+        "stellarSuite.deployment.retry.useJitter": {
+          "type": "boolean",
+          "default": true,
+          "description": "Add random jitter to retry delays to prevent thundering-herd retries."
+        },
+        "stellarSuite.deployment.retry.attemptTimeoutMs": {
+          "type": "number",
+          "default": 60000,
+          "minimum": 5000,
+          "description": "Per-attempt timeout in milliseconds. Timed-out attempts are retried if attempts remain."
         }
       }
     }

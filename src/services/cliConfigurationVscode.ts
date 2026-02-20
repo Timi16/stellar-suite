@@ -5,6 +5,7 @@ import {
     CliConfigurationStore,
     DEFAULT_CLI_CONFIGURATION,
     ResolvedCliConfiguration,
+    RpcEndpoint,
 } from './cliConfigurationService';
 
 class WorkspaceStateCliConfigurationStore implements CliConfigurationStore {
@@ -29,6 +30,8 @@ export function readWorkspaceCliConfiguration(): CliConfiguration {
         rpcEndpoints: config.get<any[]>('rpcEndpoints', DEFAULT_CLI_CONFIGURATION.rpcEndpoints),
         automaticFailover: config.get<boolean>('automaticFailover', DEFAULT_CLI_CONFIGURATION.automaticFailover),
         useLocalCli: config.get<boolean>('useLocalCli', DEFAULT_CLI_CONFIGURATION.useLocalCli),
+        rpcEndpoints: config.get<RpcEndpoint[]>('rpcEndpoints', DEFAULT_CLI_CONFIGURATION.rpcEndpoints) || DEFAULT_CLI_CONFIGURATION.rpcEndpoints,
+        automaticFailover: config.get<boolean>('automaticFailover', DEFAULT_CLI_CONFIGURATION.automaticFailover) ?? DEFAULT_CLI_CONFIGURATION.automaticFailover,
     };
 }
 
@@ -44,6 +47,8 @@ export async function writeWorkspaceCliConfiguration(
     await config.update('rpcEndpoints', configuration.rpcEndpoints, target);
     await config.update('automaticFailover', configuration.automaticFailover, target);
     await config.update('useLocalCli', configuration.useLocalCli, target);
+    await config.update('rpcEndpoints', configuration.rpcEndpoints, target);
+    await config.update('automaticFailover', configuration.automaticFailover, target);
 }
 
 export function createCliConfigurationService(context: vscode.ExtensionContext): CliConfigurationService {

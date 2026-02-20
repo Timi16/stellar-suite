@@ -25,6 +25,7 @@ import { ContractMetadataService } from "./services/contractMetadataService";
 import { ContractVersionTracker } from "./services/contractVersionTracker";
 import { WorkspaceStateSyncService } from "./services/workspaceStateSyncService";
 import { RpcHealthMonitor } from "./services/rpcHealthMonitor";
+import { RpcLogger } from "./services/rpcLogger";
 import { SimulationHistoryService } from "./services/simulationHistoryService";
 import { CompilationStatusMonitor } from "./services/compilationStatusMonitor";
 import { StateBackupService } from "./services/stateBackupService";
@@ -36,7 +37,6 @@ import { createEnvVariableService } from "./services/envVariableVscode";
 import { EnvVariableService } from "./services/envVariableService";
 import { RpcFallbackService } from "./services/rpcFallbackService";
 import { RpcRetryService } from "./services/rpcRetryService";
-import { RpcLogger } from "./services/rpcLogger";
 import { createCliConfigurationService } from "./services/cliConfigurationVscode";
 import { CliHistoryService } from "./services/cliHistoryService";
 import { CliReplayService } from "./services/cliReplayService";
@@ -163,18 +163,35 @@ export function activate(context: vscode.ExtensionContext) {
     registerCliHistoryCommands(context, cliHistoryService, cliReplayService);
     outputChannel.appendLine('[Extension] CLI history and replay initialized');
 
-    // 5. Initialize Resource Profiling and Env Variable services
+        // 5. Initialize Resource Profiling and Env Variable services
     resourceProfilingService = new ResourceProfilingService(context, outputChannel);
     registerResourceProfilingCommands(context, resourceProfilingService);
+    outputChannel.appendLine(
+        "[Extension] Resource profiling service initialized and commands registered",
+    );
 
     envVariableService = createEnvVariableService(context);
     registerEnvVariableCommands(context, envVariableService);
 
     rpcLogger = new RpcLogger({ context, enableConsoleOutput: true });
     rpcLogger.loadLogs().catch(() => {
-      outputChannel.appendLine('[Extension] WARNING: could not load RPC logs');
+        outputChannel.appendLine('[Extension] WARNING: could not load RPC logs');
     });
     registerRpcLoggingCommands(context, rpcLogger);
+
+    // ── RPC Authentication ──────────────────────────────────
+    rpcAuthService = createRpcAuthService(context);
+    const updateRpcAuthHeaders = async () => {
+        if (!rpcAuthService) return;
+        // No rpcService defined in this file — auth service initializes internally
+    };
+
+    updateRpcAuthHeaders().catch(err => {
+        outputChannel.appendLine(`[Error] Failed to initialize RPC Auth: ${err}`);
+    });
+
+    registerRpcAuthCommands(context, rpcAuthService, updateRpcAuthHeaders);
+    outputChannel.appendLine("[Extension] RPC Auth service initialized and commands registered");
 
     // 6. Initialize Compilation, Backup and Sync services
     compilationMonitor = new CompilationStatusMonitor(context);
@@ -189,19 +206,24 @@ export function activate(context: vscode.ExtensionContext) {
 
     // 7. Initialize UI
     sidebarProvider = new SidebarViewProvider(
-      context.extensionUri,
-      context,
-      cliHistoryService,
-      cliReplayService
+        context.extensionUri,
+        context,
+        cliHistoryService,
+        cliReplayService
     );
     context.subscriptions.push(
-      vscode.window.registerWebviewViewProvider(
-        SidebarViewProvider.viewType,
-        sidebarProvider
-      )
+        vscode.window.registerWebviewViewProvider(
+            SidebarViewProvider.viewType,
+            sidebarProvider
+        )
     );
 
-    simulationReplayService = new SimulationReplayService(simulationHistoryService!, outputChannel);
+    simulationReplayService = new SimulationReplayService(
+        simulationHistoryService!,
+        outputChannel
+    );
+
+    outputChannel.appendLine("[Extension] All commands registered");
 
         // 7. Register Commands
         const simulateCommand = vscode.commands.registerCommand(
@@ -306,13 +328,13 @@ export function activate(context: vscode.ExtensionContext) {
             outputChannel,
             healthMonitor!,
             healthStatusBar!,
-            retryStatusBar || { dispose: () => {} },
+            retryStatusBar || { dispose: () => { } },
             retryService!,
             fallbackService!,
             { dispose: () => metadataService?.dispose() },
-            compilationMonitor || { dispose: () => {} },
-            compilationStatusProvider || { dispose: () => {} },
-            syncStatusProvider || { dispose: () => {} }
+            compilationMonitor || { dispose: () => { } },
+            compilationStatusProvider || { dispose: () => { } },
+            syncStatusProvider || { dispose: () => { } }
         );
 
         outputChannel.appendLine("[Extension] Extension activation complete");

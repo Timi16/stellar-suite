@@ -717,12 +717,18 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
                 const versionState = this.versionTracker.getContractVersionState(
                     cargoPath, contractName
                 );
+
+                const manualTemplateAssignments = this._context.workspaceState.get<Record<string, string>>(
+                    'stellarSuite.manualTemplateAssignments',
+                    {}
+                );
+
                 const templateResult = this.templateService.detectTemplate({
                     cargoTomlPath: cargoPath,
                     contractDir: rootPath,
                     contractName,
-                    manualTemplateId: options?.manualTemplateAssignments?.[cargoPath],
-                    customTemplates: options?.customTemplates || [],
+                    manualTemplateId: manualTemplateAssignments[cargoPath],
+                    customTemplates: [],
                 });
 
                 results.push({

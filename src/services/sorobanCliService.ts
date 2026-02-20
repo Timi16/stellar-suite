@@ -12,6 +12,8 @@ import {
 } from '../utils/cliErrorParser';
 import * as os from 'os';
 import * as path from 'path';
+import { CliOutputStreamingService } from './cliOutputStreamingService';
+import { CancellationToken } from './cliCancellation';
 import { CliHistoryService } from './cliHistoryService';
 
 const execFileAsync = promisify(execFile);
@@ -65,6 +67,7 @@ export interface SimulationResult {
 export class SorobanCliService {
     private cliPath: string;
     private source: string;
+    private streamingService: CliOutputStreamingService;
     private historyService?: CliHistoryService;
     private customEnv: Record<string, string> = {};
 
@@ -75,6 +78,7 @@ export class SorobanCliService {
     ) {
         this.cliPath = cliPath;
         this.source = source;
+        this.streamingService = new CliOutputStreamingService();
         this.historyService = historyService;
     }
 
@@ -83,6 +87,7 @@ export class SorobanCliService {
         functionName: string,
         args: any[],
         network: string = 'testnet',
+        options: { cancellationToken?: CancellationToken; timeoutMs?: number } = {}
         historySource: 'manual' | 'replay' | null = 'manual'
     ): Promise<SimulationResult> {
         const startTime = Date.now();
@@ -130,17 +135,39 @@ export class SorobanCliService {
             // Get environment with proper PATH + custom env vars
             const env = getEnvironmentWithPath(this.customEnv);
 
-            // Execute the command using execFile with proper argument array
-            // This avoids shell injection and properly handles arguments
-            const { stdout, stderr } = await execFileAsync(
-                commandParts[0], // CLI path
-                commandParts.slice(1), // All arguments
-                {
-                    env: env,
-                    maxBuffer: 10 * 1024 * 1024, // 10MB buffer
-                    timeout: 30000 // 30 second timeout
-                }
-            );
+            const result = await this.streamingService.run({
+                command: commandParts[0],
+                args: commandParts.slice(1),
+                env: env as Record<string, string>,
+                timeoutMs: options.timeoutMs ?? 30000,
+                maxBufferedBytes: 10 * 1024 * 1024,
+                cancellationToken: options.cancellationToken,
+            });
+
+            const stdout = result.stdout;
+            const stderr = result.stderr;
+
+            if (result.timedOut) {
+                return {
+                    success: false,
+                    error: `Simulation timed out after ${options.timeoutMs ?? 30000}ms.`,
+                    errorSummary: 'Simulation timed out.',
+                    errorType: 'execution',
+                    errorSuggestions: ['Try again or increase the operation timeout limit.'],
+                    rawError: result.error,
+                };
+            }
+
+            if (result.cancelled) {
+                return {
+                    success: false,
+                    error: 'Simulation cancelled by user.',
+                    errorSummary: 'Simulation cancelled by user.',
+                    errorType: 'execution',
+                    errorSuggestions: ['Re-run the simulation when ready.'],
+                    rawError: result.error,
+                };
+            }
 
             stdoutText = stdout;
             stderrText = stderr;
@@ -169,6 +196,18 @@ export class SorobanCliService {
                     logCliError(parsedError, '[Simulation CLI]');
                     return this.toSimulationError(parsedError);
                 }
+            }
+
+            if (!result.success && !result.timedOut && !result.cancelled) {
+                const combined = result.combinedOutput || result.error || 'Execution failed';
+                const parsedError = parseCliErrorOutput(combined, {
+                    command: 'stellar contract invoke',
+                    contractId,
+                    functionName,
+                    network,
+                });
+                logCliError(parsedError, '[Simulation CLI]');
+                return this.toSimulationError(parsedError);
             }
 
             // Parse the output from Soroban CLI
